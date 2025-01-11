@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Gastos - Proyectos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        .container {
+            width: 80%;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        label {
+            font-size: 18px;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .total, .mensaje-completado {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .list-gastos {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .list-gastos ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .list-gastos li {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mensaje-completado {
+            color: #FFD700;
+        }
+
+        .eliminar-btn, .editar-btn {
+            color: white;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+
+        .eliminar-btn {
+            background-color: red;
+        }
+
+        .editar-btn {
+            background-color: blue;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Registro de Gastos - Proyectos</h1>
+
+        <label for="proyecto">Selecciona un Proyecto:</label>
+        <select id="proyecto" onchange="cargarGastos()">
+            <option value="platanera">Platanera</option>
+            <option value="maiz">Maíz</option>
+            <option value="terreno">Compra de Terreno</option>
+        </select>
+
+        <label for="gasto">Ingrese un gasto:</label>
+        <input type="number" id="gasto" placeholder="Cantidad del gasto en quetzales" />
+
+        <label for="descripcion">Descripción del gasto:</label>
+        <textarea id="descripcion" placeholder="Breve descripción del gasto"></textarea>
+
+        <button id="guardar-btn" onclick="agregarGasto()">Agregar Gasto</button>
+
+        <div class="list-gastos">
+            <h3>Gastos Registrados</h3>
+            <ul id="lista-gastos"></ul>
+        </div>
+
+        <div class="total">
+            <p>Total Gastado: <span id="total-gasto">0</span> Q</p>
+        </div>
+
+        <div class="total">
+            <p id="faltante"></p>
+        </div>
+
+        <div class="mensaje-completado" id="mensaje-completado"></div>
+    </div>
+
+    <script>
+        const listaGastos = document.getElementById('lista-gastos');
+        const totalGastoDisplay = document.getElementById('total-gasto');
+        const mensajeCompletado = document.getElementById('mensaje-completado');
+        const faltante = document.getElementById('faltante');
+        let editandoGasto = null; // Variable para almacenar el índice del gasto en edición
+
+        function cargarGastos() {
+            const proyectoSeleccionado = document.getElementById('proyecto').value;
+
+            listaGastos.innerHTML = '';
+            mensajeCompletado.textContent = '';
+            faltante.textContent = '';
+
+            let gastosGuardados = JSON.parse(localStorage.getItem(proyectoSeleccionado));
+
+            if (!gastosGuardados || gastosGuardados.total < 0 || !Array.isArray(gastosGuardados.gastos)) {
+                gastosGuardados = { total: 0, gastos: [] };
+                localStorage.setItem(proyectoSeleccionado, JSON.stringify(gastosGuardados));
+            }
+
+            gastosGuardados.gastos.forEach((gasto, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    Q${gasto.monto.toFixed(2)} - ${gasto.descripcion} 
+                    <button class="editar-btn" onclick="editarGasto(${index})">Editar</button>
+                    <button class="eliminar-btn" onclick="eliminarGasto(${index})">Eliminar</button>`;
+                listaGastos.appendChild(li);
+            });
+
+            totalGastoDisplay.textContent = gastosGuardados.total.toFixed(2);
+
+            if (proyectoSeleccionado === 'terreno') {
+                const restante = 6000 - gastosGuardados.total;
+                faltante.textContent = restante > 0 
+                    ? `Te faltan Q${restante.toFixed(2)} para completar el pago.` 
+                    : '';
+            }
+        }
+
+        function agregarGasto() {
+            const gastoInput = document.getElementById('gasto');
+            const descripcionInput = document.getElementById('descripcion');
+            const proyectoSeleccionado = document.getElementById('proyecto').value;
+            const gasto = parseFloat(gastoInput.value);
+            const descripcion = descripcionInput.value;
+
+            if (isNaN(gasto) || gasto <= 0 || descripcion.trim() === "") {
+                alert("Por favor, completa todos los campos correctamente.");
+                return;
+            }
+
+            const gastosGuardados = JSON.parse(localStorage.getItem(proyectoSeleccionado)) || { total: 0, gastos: [] };
+
+            if (editandoGasto !== null) {
+                // Editar gasto existente
+                const gastoEditado = gastosGuardados.gastos[editandoGasto];
+                gastosGuardados.total -= gastoEditado.monto;
+                gastosGuardados.gastos[editandoGasto] = { monto: gasto, descripcion: descripcion };
+                gastosGuardados.total += gasto;
+                editandoGasto = null;
+                document.getElementById('guardar-btn').textContent = 'Agregar Gasto';
+            } else {
+                // Agregar nuevo gasto
+                gastosGuardados.gastos.push({ monto: gasto, descripcion: descripcion });
+                gastosGuardados.total += gasto;
+            }
+
+            localStorage.setItem(proyectoSeleccionado, JSON.stringify(gastosGuardados));
+            cargarGastos();
+            gastoInput.value = '';
+            descripcionInput.value = '';
+        }
+
+        function editarGasto(index) {
+            const proyectoSeleccionado = document.getElementById('proyecto').value;
+            const gastosGuardados = JSON.parse(localStorage.getItem(proyectoSeleccionado)) || { total: 0, gastos: [] };
+
+            const gasto = gastosGuardados.gastos[index];
+            document.getElementById('gasto').value = gasto.monto;
+            document.getElementById('descripcion').value = gasto.descripcion;
+            editandoGasto = index;
+
+            document.getElementById('guardar-btn').textContent = 'Guardar Cambios';
+        }
+
+        function eliminarGasto(index) {
+            const proyectoSeleccionado = document.getElementById('proyecto').value;
+            const gastosGuardados = JSON.parse(localStorage.getItem(proyectoSeleccionado)) || { total: 0, gastos: [] };
+
+            const eliminado = gastosGuardados.gastos.splice(index, 1)[0];
+            gastosGuardados.total -= eliminado.monto;
+
+            localStorage.setItem(proyectoSeleccionado, JSON.stringify(gastosGuardados));
+            cargarGastos();
+        }
+
+        cargarGastos();
+    </script>
+</body>
+</html>
